@@ -7,20 +7,23 @@ typedef enum {POINT, AREA} AOIType;
 
 #define POINT_NODE_FLAG 1
 #define AREA_NODE_FLAG 2
+#define INIT_POS_VAL -127
 
 class AOIEntity;
 struct TriggerNode
 {
-	int x,y;
-	unsigned short flag;
-	TriggerNode *next, *prev;
+	int _x,_y;
+	unsigned short _flag;
+	TriggerNode *_next, *_prev;
 	AOIEntity *_owner;
+	TriggerNode(AOIEntity *owner, unsigned short flag):
+		_owner(owner), _flag(flag),_next(NULL),_prev(NULL) {}
 };
 
 struct AxisList
 {
-	TriggerNode *x_axis_header;
-	TriggerNode *y_axis_header;
+	TriggerNode *x_nodes_header;
+	TriggerNode *y_nodes_header;
 };
 
 
@@ -31,8 +34,8 @@ class AOITrigger
 		int _left,_right,_top,_bottom;
 
 		int _xcenter, _ycenter;
-		TriggerNode * _x_axis[2]; /* left,right */
-		TriggerNode * _y_axis[2]; /* top,bottom */
+		TriggerNode * _x_nodes[2]; /* left,right */
+		TriggerNode * _y_nodes[2]; /* top,bottom */
 
 		void MoveX(int xpos, int ypos);
 		void MoveY(int xpos, int ypos);
