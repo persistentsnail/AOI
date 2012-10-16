@@ -1,6 +1,8 @@
 #include "list_aoi.h"
 
 static AxisList g_xy_Axes;
+static AOICallback g_leaveCb;
+static AOICallback g_enterCb;
 
 static void InsertAfter(TriggerNode *pos, TriggerNode *node)
 {
@@ -22,7 +24,7 @@ AOITrigger::AOITrigger(AOIEntity *owner, AOIType type,
 	_owner(owner), _aoi_type(type), _left(left),
 	_right(right), _top(top), _bottom(bottom)
 	{
-		_xcenter = _ycenter = INIT_POS_VAL;}
+		_xcenter = _ycenter = INIT_POS_VAL;
 		for (int i = 0; i < 2; i++)
 		{
 			if (_aoi_type == POINT)
@@ -56,6 +58,13 @@ AOITrigger::AOITrigger(AOIEntity *owner, AOIType type,
 
 void AOITrigger::OnTriggerAtX(TriggerNode *area_node, TriggerNode *point_node)
 {
+	bool ret = area_node->_owner->XWasIn(point_node->_x);
+	if (!ret) return;
+	if (area_node->_owner->YWasIn(point_node->_owner->_ycenter)) // node leave area
+	{
+		g_leaveCb(area_node->_owner, point_node->_owner);
+	}
+	else if (area_node->_owner->YIsIn(point_node->_y) && area_node->_owner->XIsIn(point_node->_x)
 }
 
 void AOITrigger::MoveX(int xpos, int ypos)

@@ -10,6 +10,7 @@ typedef enum {POINT, AREA} AOIType;
 #define INIT_POS_VAL -127
 
 class AOIEntity;
+typedef void (*AOICallback)(AOITrigger *aoier, AOITrigger *entitier);  
 struct TriggerNode
 {
 	int _x,_y;
@@ -43,7 +44,7 @@ class AOITrigger
 		void OnTriggerAtY(TriggerNode *area_node, TriggerNode *point_node);
 	public:
 		AOITrigger(AOIEntity *owner, AOIType type, 
-					int left, int right, int top, int bottom); 
+					int left, int right, int top, int bottom)
 		void Move(int xpos, int ypos);
 };
 
@@ -56,15 +57,12 @@ class AOIEntity
 	 	AOITrigger *AddTrigger(AOIType type, int left, int right, int top, int bottom);
 		void DelTrigger(AOITrigger *);
 		void Move(int xpos, int ypos);
-		/* entitier enter into (leave away) aoier */
-		void EnterCallback(AOIEntity *aoier, AOIEntity *entitier);
-		void LeaveCallback(AOIEntity *aoier, AOIEntity *entitier);
 };
 
 class AOIManager
 {
 	public:
-		void Init();
+		void Init(AOICallback enterCb, AOICallback leaveCb);
 		void AddEntity(AOIEntity *);
 		void DelEntity(AOIEntity *);
 };
