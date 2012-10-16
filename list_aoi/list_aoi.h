@@ -15,8 +15,8 @@ struct TriggerNode
 	int _x,_y;
 	unsigned short _flag;
 	TriggerNode *_next, *_prev;
-	AOIEntity *_owner;
-	TriggerNode(AOIEntity *owner, unsigned short flag):
+	AOITrigger *_owner;
+	TriggerNode(AOITrigger *owner, unsigned short flag):
 		_owner(owner), _flag(flag),_next(NULL),_prev(NULL) {}
 };
 
@@ -39,8 +39,8 @@ class AOITrigger
 
 		void MoveX(int xpos, int ypos);
 		void MoveY(int xpos, int ypos);
-		void OnTriggerAtX();
-		void OnTriggerAtY();
+		void OnTriggerAtX(TriggerNode *area_node, TriggerNode *point_node);
+		void OnTriggerAtY(TriggerNode *area_node, TriggerNode *point_node);
 	public:
 		AOITrigger(AOIEntity *owner, AOIType type, 
 					int left, int right, int top, int bottom); 

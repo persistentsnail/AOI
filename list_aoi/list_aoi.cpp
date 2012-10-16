@@ -9,36 +9,44 @@ static void InsertAfter(TriggerNode *pos, TriggerNode *node)
 	pos->_next  = node;
 }
 
+static void SwapNode(TriggerNode *left, TriggerNode *right)
+{
+	left->_next = right->_next;
+	right->_prev = left->_prev;
+	left->_prev = right;
+	right->_next = left;
+}
+
 AOITrigger::AOITrigger(AOIEntity *owner, AOIType type,
 	int left, int right, int top, int bottom):
 	_owner(owner), _aoi_type(type), _left(left),
 	_right(right), _top(top), _bottom(bottom)
 	{
-		_xcenter = _ycenter = INIT_POS_VAL;
-		if (_aoi_type == POINT)
-		{
-			_x_nodes[0] = new TriggerNode(_owner, POINT_NODE_FLAG);
-			_x_nodes[0]->_x = _xcenter;
-
-			_x_nodes[1] = NULL;
-			_y_nodes[0] = new TriggerNode(_owner, POINT_NODE_FLAG);
-			_y_nodes[0]->_y = _ycenter;
-			_y_nodes[1] = NULL;
-		}
-		else if (_aoi_type == AREA)
-		{
-			_x_nodes[0] = new TriggerNode(_owner, AREA_NODE_FLAG);
-			_x_nodes[0]->_x = INIT_POS_VAL;
-			_x_nodes[1] = new TriggerNode(_owner, AREA_NODE_FLAG);
-			_x_nodes[1]->_x = INIT_POS_VAL;
-
-			_y_nodes[0] = new TriggerNode(_owner, AREA_NODE_FLAG);
-			_y_nodes[0]->_y = INIT_POS_VAL;
-			_y_nodes[1] = new TriggerNode(_owner, AREA_NODE_FLAG);
-			_y_nodes[1]->_y = INIT_POS_VAL;
-		}
+		_xcenter = _ycenter = INIT_POS_VAL;}
 		for (int i = 0; i < 2; i++)
 		{
+			if (_aoi_type == POINT)
+			{
+				if (i == 0)
+				{
+					_x_nodes[0] = new TriggerNode(this, POINT_NODE_FLAG);
+					_x_nodes[0]->_x = INIT_POS_VAL;
+					
+					_y_nodes[0] = new TriggerNode(this, POINT_NODE_FLAG);
+					_y_nodes[0]->_y = INIT_POS_VAL;
+				}
+				else
+				{
+					_x_nodes[1] = NULL;
+					_y_nodes[1] = NULL;
+				}
+			}
+			else if (_aoi_type == AREA)
+			{
+				_x_nodes[i] = new TriggerNode(this, AREA_NODE_FLAG);
+				_y_nodes[i] = new TriggerNode(this, AREA_NODE_FLAG);
+			}
+
 			if (_x_nodes[i])
 				InsertAfter(g_xy_Axes.x_nodes_header, _x_nodes[i]);
 			if (_y_nodes[i])
@@ -46,6 +54,48 @@ AOITrigger::AOITrigger(AOIEntity *owner, AOIType type,
 		}
 	}
 
+void AOITrigger::OnTriggerAtX(TriggerNode *area_node, TriggerNode *point_node)
+{
+}
+
+void AOITrigger::MoveX(int xpos, int ypos)
+{
+	for (int i = 0; i < 2; i++)
+	{
+		TriggerNode *loop = _x_nodes[i];
+		if (!loop)
+			continue;
+		while (loop && loop->_prev && loop->_prev->_x > loop->_x)
+		{
+			if ((loop->_prev->_flag & AREA_NODE_FLAG) && (loop->_flag & POINT_NODE_FLAG)) 
+				OnTriggerAtX(loop->_prev, loop);
+			else if ((loop->_prev->_flag & POINT_NODE_FLAG) && (loop->_flag & AREA_NODE_FL))
+				OnTriggerAtX(loop, loop->_prev);
+			SwapNode(loop->_prev, loop);
+		}
+		while (loop && loop->_next && loop->_next->_x < loop->_x)
+		{
+			if ((loop->_next->_flag & AREA_NODE_FLAG) && (loop->_flag & POINT_NODE_FLAG))
+				OnTriggerAtX(loop->_next, loop);
+			else if ((loop->_next->_flag & POINT_NODE_FLAG) && (loop->_flag & AREA_NODE_FLAG))
+				OnTriggerAtX(loop, loop->_next);
+			SwapNode(loop, loop->_next);
+		}
+	}
+}
+
 void AOITrigger::Move(int xpos, int ypos)
 {
+	if (_aoi_type == POINT)
+	{
+		_x_nodes[0]->_x = xpos;
+		_y_nodes[0]->_y = ypos;
+	}
+	else if (_aoi_type == AREA)
+	{
+		_x_nodes[0]->_x = xpos + _left;
+		_x_nodes[1]->_x = xpos + _right;
+		_y_nodes[0]->_y = ypos + _top;
+		_y_nodes[1]->_y = ypos + _bottom;
+	}
 }
