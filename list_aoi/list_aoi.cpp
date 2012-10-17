@@ -64,12 +64,27 @@ void AOITrigger::OnTriggerAtX(TriggerNode *area_node, TriggerNode *point_node)
 	{
 		g_leaveCb(area_node->_owner, point_node->_owner);
 	}
-	else if (area_node->_owner->YIsIn(point_node->_y) && area_node->_owner->XIsIn(point_node->_x))
+	else if (area_node->_owner->YIsIn(point_node->_y))
 	{
+		g_enterCb(area_node->_owner, point_node->_owner);
 	}
 }
 
-void AOITrigger::MoveX(int xpos, int ypos)
+void AOITrigger::OnTriggerAtY(TriggerNode *area_node, TriggerNode *point_node)
+{
+	bool ret = area_node->_owner->XIsIn(point_node->_x);
+	if (!ret) return;
+	if (area_node->_owner->YIsIn(point_node->_y))
+	{
+		g_enterCb(area_node->_owner, point_node->_owner);
+	}
+	else if (area_node->_owner->XWasIn(point_node->_owner->_xcenter))
+	{
+		g_leaveCb(area_node->_owner, point_node->_owner);
+	}
+}
+
+void AOITrigger::MoveX()
 {
 	for (int i = 0; i < 2; i++)
 	{
