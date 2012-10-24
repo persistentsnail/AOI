@@ -45,25 +45,31 @@ class AOITrigger
 	public:
 		AOITrigger(AOIEntity *owner, AOIType type, 
 					int left, int right, int top, int bottom)
+		~AOITrigger();
 		void Move(int xpos, int ypos);
+		void Enter(int xpos, int ypos);
+		void Leave();
 };
 
 class AOIEntity
 {
 		std::list<AOITrigger *> _triggers;
+		bool _has_in;
 	public:
 		int _xpos, _ypos;
-		AOIEntity():_xpos(-127), _ypos(-127) {}
+		AOIEntity():_xpos(-127), _ypos(-127), _has_in(false) {}
 	 	AOITrigger *AddTrigger(AOIType type, int left, int right, int top, int bottom);
 		void DelTrigger(AOITrigger *);
 		void Move(int xpos, int ypos);
+		void Enter(int xpos, int ypos);
+		void Leave();
 };
 
 class AOIManager
 {
 	public:
 		void Init(AOICallback enterCb, AOICallback leaveCb);
-		void AddEntity(AOIEntity *);
-		void DelEntity(AOIEntity *);
+		void EntityEnter(AOIEntity *, int , int ,);
+		void EntityLeave(AOIEntity *);
 };
 #endif
