@@ -58,6 +58,7 @@ class AOIEntity
 	public:
 		int _xpos, _ypos;
 		AOIEntity():_xpos(-127), _ypos(-127), _has_in(false) {}
+		~AOIEntity() {}
 	 	AOITrigger *AddTrigger(AOIType type, int left, int right, int top, int bottom);
 		void DelTrigger(AOITrigger *);
 		void Move(int xpos, int ypos);

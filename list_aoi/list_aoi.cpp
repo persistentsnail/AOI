@@ -124,7 +124,7 @@ void AOITrigger::MoveX()
 	}
 }
 
-void AOITrigger:MoveY()
+void AOITrigger::MoveY()
 {
 	for (int i = 0; i < 2; i++)
 	{
@@ -170,7 +170,7 @@ void AOITrigger::Move(int xpos, int ypos)
 	_ycenter = ypos;
 }
 
-void AOITrigger:Enter(int xpos, int ypos)
+void AOITrigger::Enter(int xpos, int ypos)
 {
 	for (int i = 0; i < 2; i++)
 	{
@@ -182,7 +182,7 @@ void AOITrigger:Enter(int xpos, int ypos)
 	Move(xpos, ypos);
 }
 
-void AOITrigger:Leave()
+void AOITrigger::Leave()
 {
 	Move(-127, -127);
 	for (int i = 0; i < 2; i++)
@@ -216,7 +216,7 @@ void AOIEntity::Enter(int xpos, int ypos)
 	if (_has_in) return;
 	std::list<AOITrigger *>::iterator iter = _triggers.begin();
 	for (; iter != _triggers.end(); iter++)
-		iter->Enter(xpos, ypos);
+		(*iter)->Enter(xpos, ypos);
 	_xpos = xpos;
 	_ypos = ypos;
 	_has_in = true;
@@ -227,15 +227,23 @@ void AOIEntity::Leave()
 	if (!_has_in) return;
 	std::list<AOITrigger *>::iterator iter = _triggers.begin();
 	for (; iter != _triggers.end(); iter++)
-		iter->Leave();
+		(*iter)->Leave();
 	_has_in = false;
 }
 
 void AOIEntity::Move(int xpos, int ypos)
 {
+	if (!_has_in) return;
 	std::list<AOITrigger *>::iterator iter = _triggers.begin();
 	for (; iter != _triggers.end(); iter++)
-		iter->Move(xpos, ypos);
+		(*iter)->Move(xpos, ypos);
+}
+
+void AOIEntity::~AOIEntity()
+{
+	std::list<AOITrigger *>::iterator iter = _triggers.begin();
+	for (; iter != _triggers.end(); iter++)
+		DelTrigger(*iter);
 }
 
 void AOIManager::Init(AOICallback enterCb, AOICallback leaveCb)
@@ -244,6 +252,8 @@ void AOIManager::Init(AOICallback enterCb, AOICallback leaveCb)
 	g_xy_Axes.y_nodes_header = new TriggerNode(NULL, 0);
 	g_xy_Axes.x_nodes_header->_x = g_xy_Axes.x_nodes_header->_y = INIT_POS_VAL - 1;
 	g_xy_Axes.y_nodes_header->_x = g_xy_Axes.x_nodes_header->_y = INIT_POS_VAL - 1;
+	g_leaveCb = leaveCb;
+	g_enterCb = enterCb;
 }
 
 void AOIManager::EntityEnter(AOIEntity *entity, int x, int y)
