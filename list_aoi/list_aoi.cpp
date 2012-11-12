@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "list_aoi.h"
 
 static AxisList g_xy_Axes;
@@ -76,11 +77,11 @@ void AOITrigger::OnTriggerAtX(TriggerNode *area_node, TriggerNode *point_node)
 	if (!ret) return;
 	if (area_node->_owner->XWasIn(point_node->_owner->_xcenter)) // node leave area
 	{
-		g_leaveCb(area_node->_owner, point_node->_owner);
+		g_leaveCb(area_node->_owner->_owner, point_node->_owner->_owner);
 	}
 	else if (area_node->_owner->YIsIn(point_node->_y))
 	{
-		g_enterCb(area_node->_owner, point_node->_owner);
+		g_enterCb(area_node->_owner->_owner, point_node->_owner->_owner);
 	}
 }
 
@@ -90,11 +91,11 @@ void AOITrigger::OnTriggerAtY(TriggerNode *area_node, TriggerNode *point_node)
 	if (!ret) return;
 	if (area_node->_owner->YIsIn(point_node->_y))
 	{
-		g_enterCb(area_node->_owner, point_node->_owner);
+		g_enterCb(area_node->_owner->_owner, point_node->_owner->_owner);
 	}
 	else if (area_node->_owner->XWasIn(point_node->_owner->_xcenter))
 	{
-		g_leaveCb(area_node->_owner, point_node->_owner);
+		g_leaveCb(area_node->_owner->_owner, point_node->_owner->_owner);
 	}
 }
 
@@ -177,7 +178,7 @@ void AOITrigger::Enter(int xpos, int ypos)
 		if (_x_nodes[i])
 			InsertAfter(g_xy_Axes.x_nodes_header, _x_nodes[i]);
 		if (_y_nodes[i])
-			InserAfter(g_xy_Axes.y_nodes_header, _y_nodes[i]);
+			InsertAfter(g_xy_Axes.y_nodes_header, _y_nodes[i]);
 	}
 	Move(xpos, ypos);
 }
@@ -239,7 +240,7 @@ void AOIEntity::Move(int xpos, int ypos)
 		(*iter)->Move(xpos, ypos);
 }
 
-void AOIEntity::~AOIEntity()
+AOIEntity::~AOIEntity()
 {
 	std::list<AOITrigger *>::iterator iter = _triggers.begin();
 	for (; iter != _triggers.end(); iter++)
