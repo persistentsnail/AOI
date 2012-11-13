@@ -9,7 +9,9 @@ static void InsertAfter(TriggerNode *pos, TriggerNode *node)
 {
 	node->_prev = pos;
 	node->_next = pos->_next;
-	pos->_next  = node;
+	if (pos->_next)
+		pos->_next->_prev  = node;
+	pos->_next = node;
 }
 
 static void SwapNode(TriggerNode *left, TriggerNode *right)
@@ -18,6 +20,10 @@ static void SwapNode(TriggerNode *left, TriggerNode *right)
 	right->_prev = left->_prev;
 	left->_prev = right;
 	right->_next = left;
+	if (right->_prev)
+		right->_prev->_next = right;
+	if (left->_next)
+		left->_next->_prev = left;
 }
 
 static void RemoveNode(TriggerNode *node)
@@ -55,7 +61,9 @@ AOITrigger::AOITrigger(AOIEntity *owner, AOIType type,
 			else if (_aoi_type == AREA)
 			{
 				_x_nodes[i] = new TriggerNode(this, AREA_NODE_FLAG);
+				_x_nodes[i]->_x = INIT_POS_VAL;
 				_y_nodes[i] = new TriggerNode(this, AREA_NODE_FLAG);
+				_y_nodes[i]->_y = INIT_POS_VAL;
 			}
 		}
 	}
@@ -73,6 +81,8 @@ AOITrigger::~AOITrigger()
 
 void AOITrigger::OnTriggerAtX(TriggerNode *area_node, TriggerNode *point_node)
 {
+	if (area_node->_owner->_owner == point_node->_owner->_owner)
+		return;
 	bool ret = area_node->_owner->YWasIn(point_node->_owner->_ycenter);
 	if (!ret) return;
 	if (area_node->_owner->XWasIn(point_node->_owner->_xcenter)) // node leave area
@@ -87,6 +97,9 @@ void AOITrigger::OnTriggerAtX(TriggerNode *area_node, TriggerNode *point_node)
 
 void AOITrigger::OnTriggerAtY(TriggerNode *area_node, TriggerNode *point_node)
 {
+	if (area_node->_owner->_owner == point_node->_owner->_owner)
+		return;
+
 	bool ret = area_node->_owner->XIsIn(point_node->_x);
 	if (!ret) return;
 	if (area_node->_owner->YIsIn(point_node->_y))
@@ -140,7 +153,7 @@ void AOITrigger::MoveY()
 				OnTriggerAtY(loop, loop->_prev);
 			SwapNode(loop->_prev, loop);
 		}
-		while (loop && loop->_next && loop->_next->_x < loop->_x)
+		while (loop && loop->_next && loop->_next->_y < loop->_y)
 		{
 			if ((loop->_next->_flag & AREA_NODE_FLAG) && (loop->_flag & POINT_NODE_FLAG))
 				OnTriggerAtY(loop->_next, loop);
@@ -156,7 +169,9 @@ void AOITrigger::Move(int xpos, int ypos)
 	if (_aoi_type == POINT)
 	{
 		_x_nodes[0]->_x = xpos;
+		_x_nodes[0]->_y = ypos;
 		_y_nodes[0]->_y = ypos;
+		_y_nodes[0]->_x = xpos;
 	}
 	else if (_aoi_type == AREA)
 	{
@@ -238,6 +253,8 @@ void AOIEntity::Move(int xpos, int ypos)
 	std::list<AOITrigger *>::iterator iter = _triggers.begin();
 	for (; iter != _triggers.end(); iter++)
 		(*iter)->Move(xpos, ypos);
+	_xpos = xpos;
+	_ypos = ypos;
 }
 
 AOIEntity::~AOIEntity()

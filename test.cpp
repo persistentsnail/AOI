@@ -38,6 +38,7 @@ struct Point
 
 struct TestEntity
 {
+	bool _has_area;
 	Rect _area;
 	Point _pt;
 	Point _old_pt;
@@ -89,8 +90,12 @@ void TestMove(int index, int x, int y)
 	for (int i = 0; i < Entity_Num; i++)
 	{
 		if (i == index) continue;
-		Process(test, TestEntities[i]);
-		Process(TestEntities[i], test);
+		/* if test has area AOI */
+		if (test._has_area)
+			Process(test, TestEntities[i]);
+		/* if TestEntities[i] has area AOI */
+		if (TestEntities[i]._has_area)
+			Process(TestEntities[i], test);
 	}
 	test._old_pt._x = x;
 	test._old_pt._y = y;
@@ -99,12 +104,14 @@ void TestMove(int index, int x, int y)
 void EnterCallback(AOIEntity *aoier, AOIEntity *entitier)
 {
 	EnterResult[aoier->GetId()] = entitier->GetId();
+	printf("%d Enter into %d\n", entitier->GetId(), aoier->GetId());
 }
 
 
 void LeaveCallback(AOIEntity *aoier, AOIEntity *entitier)
 {
 	LeaveResult[aoier->GetId()] = entitier->GetId();
+	printf("%d Leave away %d\n", entitier->GetId(), aoier->GetId());
 }
 
 void Shuffle(int *array, int n)
@@ -124,7 +131,7 @@ void timercb(int)
 {
 	int * rarray = new int[Entity_Num];
 	Shuffle(rarray, Entity_Num);
-	int active_size = Entity_Num / 3;
+	int active_size = Entity_Num / 3 ? Entity_Num /3 : Entity_Num;
 
 	for (int i = 0; i < active_size; i++)
 	{
@@ -158,7 +165,7 @@ int main(int argc, char *argv[])
 		unsigned int rval = random() % 0xffffffff;
 		for (int j = 0; j < 32 && i < Entity_Num; j++, i++)
 		{
-			if (rval & 1)
+			//if (rval & 1)
 				Entities[i].AddTrigger(AREA,-R, R, -R, R); 
 			rval >>= 1;
 		}
@@ -169,7 +176,12 @@ int main(int argc, char *argv[])
 
 	for (i = 0; i < Entity_Num; i++)
 	{
-		scene_mgr.EntityEnter(&Entities[i], random()%W, random()%H);
+		int x, y;
+		x = 50 + 5*i;
+		//x = random()%W;
+		 y = 50 + 5*i;
+		 //y = random()%H;
+		scene_mgr.EntityEnter(&Entities[i], x, y);
 	}
 	
 	for (int i = 0; i < Entity_Num; i++)
@@ -177,9 +189,10 @@ int main(int argc, char *argv[])
 		AOIEntity & aoi_entity = Entities[i];
 		list<AOITrigger *> triggers = aoi_entity.Triggers();
 		list<AOITrigger *>::iterator iter = triggers.begin();
+		bool has_area = false;
 
-		/* 现在测试只支持一个Entity挂两个AOI，一个是Area AOI，一个是Point AOI */
-		for (int j = 0; j < 2; j++)
+		/* 现在测试只支持一个Entity最多挂两个AOI，一个是Area AOI，一个是Point AOI */
+		for (; iter != triggers.end(); iter++)
 		{
 			if ((*iter)->Type() == AREA)
 			{
@@ -187,6 +200,7 @@ int main(int argc, char *argv[])
 				TestEntities[i]._area._right = (*iter)->Right();
 				TestEntities[i]._area._top = (*iter)->Top();
 				TestEntities[i]._area._bottom = (*iter)->Bottom();
+				has_area = true;
 			}
 			else if ((*iter)->Type() == POINT)
 			{
@@ -195,8 +209,8 @@ int main(int argc, char *argv[])
 				TestEntities[i]._pt._x = aoi_entity._xpos;
 				TestEntities[i]._pt._y = aoi_entity._ypos;
 			}
-			iter++;
 		}
+		TestEntities[i]._has_area = has_area;
 		TestEntities[i]._id = i;
 	}
 
