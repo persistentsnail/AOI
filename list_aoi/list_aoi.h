@@ -15,11 +15,20 @@ typedef void (*AOICallback)(AOIEntity *aoier, AOIEntity *entitier);
 struct TriggerNode
 {
 	int _x,_y;
+	/*************************************************************
+	 * 1. _priority主要是用于两个节点值相等时的行为判断;
+	 * 2. 左（上）边界的_priority是2, 右（下）边界的_priority是-2
+	 * 点节点的_priority是0;
+	 * 3. 优先级关系 左（上） > 点 > 右（下）;
+	 * 4. 设置这样的优先级是由以下事实决定:
+	 * 点在区域边界上时不算作在区域AOI范围;
+	*************************************************************/
+	int _priority;
 	unsigned short _flag;
 	TriggerNode *_next, *_prev;
 	AOITrigger *_owner;
-	TriggerNode(AOITrigger *owner, unsigned short flag):
-		_owner(owner), _flag(flag),_next(NULL),_prev(NULL) {}
+	TriggerNode(AOITrigger *owner, unsigned short flag, int priority):
+		_owner(owner), _flag(flag),_next(NULL),_prev(NULL),_priority(priority) {}
 };
 
 struct AxisList

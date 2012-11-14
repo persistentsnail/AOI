@@ -1,6 +1,15 @@
 #include <stdio.h>
 #include "list_aoi.h"
 
+/* for debug */
+#include <cassert>
+
+#ifdef DEBUG
+#define DBG(a) a
+#else
+#define DBG(a) 
+#endif
+
 static AxisList g_xy_Axes;
 static AOICallback g_leaveCb;
 static AOICallback g_enterCb;
@@ -34,6 +43,38 @@ static void RemoveNode(TriggerNode *node)
 		node->_next->_prev = node->_prev;
 }
 
+/* for debug */
+static bool IsOrdered()
+{
+	TriggerNode *node = g_xy_Axes.x_nodes_header->_next;
+	DBG(printf("x : "));
+	while (node)
+	{
+		if (node->_next && node->_x > node->_next->_x)
+		{
+			DBG(printf("error X : %d %d\n", node->_x, node->_next->_x));
+			assert(false);
+		}
+		DBG(printf("%d ", node->_x));
+		node = node->_next;
+	}
+	DBG(printf("\ny : "));
+
+	node = g_xy_Axes.y_nodes_header->_next;
+	while (node)
+	{
+		if (node->_next && node->_y > node->_next->_y)
+		{
+			DBG(printf("error Y : %d %d\n", node->_y, node->_next->_y));
+			assert(false);
+		}
+		DBG(printf("%d ", node->_y));
+		node = node->_next;
+	}
+	DBG(printf("\n"));
+	return true;
+}
+
 AOITrigger::AOITrigger(AOIEntity *owner, AOIType type,
 	int left, int right, int top, int bottom):
 	_owner(owner), _aoi_type(type), _left(left),
@@ -46,10 +87,10 @@ AOITrigger::AOITrigger(AOIEntity *owner, AOIType type,
 			{
 				if (i == 0)
 				{
-					_x_nodes[0] = new TriggerNode(this, POINT_NODE_FLAG);
+					_x_nodes[0] = new TriggerNode(this, POINT_NODE_FLAG, 0);
 					_x_nodes[0]->_x = INIT_POS_VAL;
 					
-					_y_nodes[0] = new TriggerNode(this, POINT_NODE_FLAG);
+					_y_nodes[0] = new TriggerNode(this, POINT_NODE_FLAG, 0);
 					_y_nodes[0]->_y = INIT_POS_VAL;
 				}
 				else
@@ -60,9 +101,9 @@ AOITrigger::AOITrigger(AOIEntity *owner, AOIType type,
 			}
 			else if (_aoi_type == AREA)
 			{
-				_x_nodes[i] = new TriggerNode(this, AREA_NODE_FLAG);
+				_x_nodes[i] = new TriggerNode(this, AREA_NODE_FLAG, i == 0? 2 : -2);
 				_x_nodes[i]->_x = INIT_POS_VAL;
-				_y_nodes[i] = new TriggerNode(this, AREA_NODE_FLAG);
+				_y_nodes[i] = new TriggerNode(this, AREA_NODE_FLAG, i == 0? 2 : -2);
 				_y_nodes[i]->_y = INIT_POS_VAL;
 			}
 		}
@@ -89,7 +130,7 @@ void AOITrigger::OnTriggerAtX(TriggerNode *area_node, TriggerNode *point_node)
 	{
 		g_leaveCb(area_node->_owner->_owner, point_node->_owner->_owner);
 	}
-	else if (area_node->_owner->YIsIn(point_node->_y))
+	else if (area_node->_owner->YIsIn(point_node->_y) && area_node->_owner->XIsIn(point_node->_x))
 	{
 		g_enterCb(area_node->_owner->_owner, point_node->_owner->_owner);
 	}
@@ -106,7 +147,7 @@ void AOITrigger::OnTriggerAtY(TriggerNode *area_node, TriggerNode *point_node)
 	{
 		g_enterCb(area_node->_owner->_owner, point_node->_owner->_owner);
 	}
-	else if (area_node->_owner->XWasIn(point_node->_owner->_xcenter))
+	else if (area_node->_owner->XWasIn(point_node->_owner->_xcenter) && area_node->_owner->YWasIn(point_node->_owner->_ycenter))
 	{
 		g_leaveCb(area_node->_owner->_owner, point_node->_owner->_owner);
 	}
@@ -119,7 +160,8 @@ void AOITrigger::MoveX()
 		TriggerNode *loop = _x_nodes[i];
 		if (!loop)
 			continue;
-		while (loop && loop->_prev && loop->_prev->_x > loop->_x)
+		while (loop && loop->_prev && ( loop->_prev->_x > loop->_x || 
+			(loop->_prev->_x == loop->_x && loop->_prev->_priority > loop->_priority)))
 		{
 			if ((loop->_prev->_flag & AREA_NODE_FLAG) && (loop->_flag & POINT_NODE_FLAG)) 
 				OnTriggerAtX(loop->_prev, loop);
@@ -127,7 +169,16 @@ void AOITrigger::MoveX()
 				OnTriggerAtX(loop, loop->_prev);
 			SwapNode(loop->_prev, loop);
 		}
-		while (loop && loop->_next && loop->_next->_x < loop->_x)
+	}
+
+	for (int i = 1; i >= 0; i--)
+	{
+		TriggerNode *loop = _x_nodes[i];
+		if (!loop)
+			continue;
+	
+		while (loop && loop->_next && ( loop->_next->_x < loop->_x ||
+			(loop->_next->_x == loop->_x && loop->_next->_priority < loop->_priority)))
 		{
 			if ((loop->_next->_flag & AREA_NODE_FLAG) && (loop->_flag & POINT_NODE_FLAG))
 				OnTriggerAtX(loop->_next, loop);
@@ -145,7 +196,8 @@ void AOITrigger::MoveY()
 		TriggerNode *loop = _y_nodes[i];
 		if (!loop)
 			continue;
-		while (loop && loop->_prev && loop->_prev->_y > loop->_y)
+		while (loop && loop->_prev && ( loop->_prev->_y > loop->_y ||
+			(loop->_prev->_y == loop->_y && loop->_prev->_priority > loop->_priority)))
 		{
 			if ((loop->_prev->_flag & AREA_NODE_FLAG) && (loop->_flag & POINT_NODE_FLAG))
 				OnTriggerAtY(loop->_prev, loop);
@@ -153,7 +205,16 @@ void AOITrigger::MoveY()
 				OnTriggerAtY(loop, loop->_prev);
 			SwapNode(loop->_prev, loop);
 		}
-		while (loop && loop->_next && loop->_next->_y < loop->_y)
+	}
+
+	for (int i = 1; i >= 0; i--)
+	{
+		TriggerNode *loop = _y_nodes[i];
+		if (!loop)
+			continue;
+	
+		while (loop && loop->_next && ( loop->_next->_y < loop->_y ||
+			(loop->_next->_y == loop->_y && loop->_next->_priority < loop->_priority)))
 		{
 			if ((loop->_next->_flag & AREA_NODE_FLAG) && (loop->_flag & POINT_NODE_FLAG))
 				OnTriggerAtY(loop->_next, loop);
@@ -184,6 +245,8 @@ void AOITrigger::Move(int xpos, int ypos)
 	MoveY();
 	_xcenter = xpos;
 	_ycenter = ypos;
+	/* for test */
+	/* IsOrdered(); */
 }
 
 void AOITrigger::Enter(int xpos, int ypos)
@@ -266,10 +329,10 @@ AOIEntity::~AOIEntity()
 
 void AOIManager::Init(AOICallback enterCb, AOICallback leaveCb)
 {
-	g_xy_Axes.x_nodes_header = new TriggerNode(NULL, 0);
-	g_xy_Axes.y_nodes_header = new TriggerNode(NULL, 0);
-	g_xy_Axes.x_nodes_header->_x = g_xy_Axes.x_nodes_header->_y = INIT_POS_VAL - 1;
-	g_xy_Axes.y_nodes_header->_x = g_xy_Axes.x_nodes_header->_y = INIT_POS_VAL - 1;
+	g_xy_Axes.x_nodes_header = new TriggerNode(NULL, 0, -1);
+	g_xy_Axes.y_nodes_header = new TriggerNode(NULL, 0, -1);
+	g_xy_Axes.x_nodes_header->_x = g_xy_Axes.x_nodes_header->_y = (1 << 31);
+	g_xy_Axes.y_nodes_header->_x = g_xy_Axes.x_nodes_header->_y = (1 << 31);
 	g_leaveCb = leaveCb;
 	g_enterCb = enterCb;
 }

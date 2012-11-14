@@ -17,13 +17,18 @@ using  std::list;
 
 #define MAX_TRIGGERS 100
 
-#define R 8
+#define R 18
 #define W 1024
 #define H 768
 
 #define MAX_ENTITY_NUMBER 1024
 static int Entity_Num = 0;
 static AOIEntity Entities[MAX_ENTITY_NUMBER];
+
+int DebugI = -1;
+int DebugJ = -1;
+
+static bool TimerStart = false;
 
 /* for test */
 struct Rect
@@ -67,18 +72,32 @@ struct TestEntity
 
 TestEntity TestEntities[MAX_ENTITY_NUMBER];
 
-int LeaveResult[MAX_ENTITY_NUMBER];
-int EnterResult[MAX_ENTITY_NUMBER];
+int LeaveResult[MAX_ENTITY_NUMBER][MAX_ENTITY_NUMBER];
+int EnterResult[MAX_ENTITY_NUMBER][MAX_ENTITY_NUMBER];
+
+static int DebugT = 0;
 
 
 inline void Process(const TestEntity &area_entity, const TestEntity &pt_entity)
 {
 	if (area_entity.WasIn(pt_entity._old_pt) && !area_entity.IsIn(pt_entity._pt))
 		/* pt leave area */
-		assert(LeaveResult[area_entity._id] == pt_entity._id);
+	{
+		//assert(LeaveResult[area_entity._id][pt_entity._id] == 1);
+		LeaveResult[area_entity._id][pt_entity._id] = 1;
+		DebugI = area_entity._id;
+		DebugJ = pt_entity._id;
+		DebugT++;
+	}
 	else if (!area_entity.WasIn(pt_entity._old_pt) && area_entity.IsIn(pt_entity._pt))
 		/* pt enter area */
-		assert(EnterResult[area_entity._id] == pt_entity._id);
+	{
+		//assert(EnterResult[area_entity._id][pt_entity._id] == 1);
+		EnterResult[area_entity._id][pt_entity._id] = 1;
+		DebugI = area_entity._id;
+		DebugJ = pt_entity._id;
+		DebugT++;
+	}
 }
 
 void TestMove(int index, int x, int y)
@@ -103,15 +122,21 @@ void TestMove(int index, int x, int y)
 
 void EnterCallback(AOIEntity *aoier, AOIEntity *entitier)
 {
-	EnterResult[aoier->GetId()] = entitier->GetId();
+	if (TimerStart)
+		assert(EnterResult[aoier->GetId()][entitier->GetId()] == 1);
+		//EnterResult[aoier->GetId()][entitier->GetId()] = 1;
 	printf("%d Enter into %d\n", entitier->GetId(), aoier->GetId());
+	DebugT--;
 }
 
 
 void LeaveCallback(AOIEntity *aoier, AOIEntity *entitier)
 {
-	LeaveResult[aoier->GetId()] = entitier->GetId();
+	if (TimerStart)
+		assert(LeaveResult[aoier->GetId()][entitier->GetId()] == 1);
+		//LeaveResult[aoier->GetId()][entitier->GetId()] = 1;
 	printf("%d Leave away %d\n", entitier->GetId(), aoier->GetId());
+	DebugT--;
 }
 
 void Shuffle(int *array, int n)
@@ -133,13 +158,26 @@ void timercb(int)
 	Shuffle(rarray, Entity_Num);
 	int active_size = Entity_Num / 3 ? Entity_Num /3 : Entity_Num;
 
+	if (!TimerStart)
+		TimerStart = true;
+	static int s_hit_times = 0;
+	printf("timer wake up the %d times\n", ++s_hit_times);
+
 	for (int i = 0; i < active_size; i++)
 	{
 		int x = random()%W;
 		int y = random()%H;
 		int index = rarray[i];
-		Entities[index].Move(x, y);
+
+		memset(&LeaveResult, -1, sizeof(LeaveResult));
+		memset(&EnterResult, -1, sizeof(EnterResult));
+
+		DebugT = 0;
+
 		TestMove(index, x, y);
+		printf("total hit times : %d\n", DebugT);
+		Entities[index].Move(x, y);
+		assert(DebugT == 0);
 	}
 	delete [] rarray;
 	
@@ -153,6 +191,9 @@ int main(int argc, char *argv[])
 
 	if (argc >= 2)
 		Entity_Num = atoi(argv[1]);
+	AOIManager scene_mgr;
+	scene_mgr.Init(EnterCallback, LeaveCallback);
+
 	for (i = 0; i < Entity_Num; i++)
 	{
 		Entities[i].AddTrigger(POINT, -1, -1, -1, -1); 
@@ -165,24 +206,33 @@ int main(int argc, char *argv[])
 		unsigned int rval = random() % 0xffffffff;
 		for (int j = 0; j < 32 && i < Entity_Num; j++, i++)
 		{
-			//if (rval & 1)
+			if (rval & 1)
 				Entities[i].AddTrigger(AREA,-R, R, -R, R); 
 			rval >>= 1;
 		}
 	}
 
-	AOIManager scene_mgr;
-	scene_mgr.Init(EnterCallback, LeaveCallback);
+	
 
 	for (i = 0; i < Entity_Num; i++)
 	{
 		int x, y;
-		x = 50 + 5*i;
-		//x = random()%W;
-		 y = 50 + 5*i;
-		 //y = random()%H;
+		//x = 50 + 5*i;
+		x = random()%W;
+		// y = 50 + 5*i;
+		 y = random()%H;
 		scene_mgr.EntityEnter(&Entities[i], x, y);
 	}
+	/*
+	 debug case
+	Entities[0].AddTrigger(POINT, -1, -1, -1, -1);
+	Entities[0].SetId(0);
+	Entities[1].AddTrigger(POINT, -1, -1, -1, -1);
+	Entities[1].AddTrigger(AREA, -R, R, -R, R);
+	Entities[1].SetId(1);
+	scene_mgr.EntityEnter(&Entities[0], 544, 431);
+	scene_mgr.EntityEnter(&Entities[1], 172, 689);
+*/
 	
 	for (int i = 0; i < Entity_Num; i++)
 	{
@@ -213,9 +263,6 @@ int main(int argc, char *argv[])
 		TestEntities[i]._has_area = has_area;
 		TestEntities[i]._id = i;
 	}
-
-	memset(&LeaveResult, -1, sizeof(LeaveResult));
-	memset(&EnterResult, -1, sizeof(EnterResult));
 
 	struct sigaction act;
 	act.sa_handler = timercb;
